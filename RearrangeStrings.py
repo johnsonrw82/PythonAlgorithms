@@ -1,3 +1,14 @@
+# This is a solution to the following problem (found on CodeFights - 1/25/2017)
+# Determine if a non-empty array of (at least 2) equal-length strings can be organized
+# in such a way that each consecutive element differs from the ones next to it by only a single character
+# Ex:   ["ab","bb","ba"] -> True
+#       ["abx","abc","axa"] -> False
+# Constraints for this particular problem:
+# 2 <= len(array) <= 10
+# 1 <= len(array[i]) <= 15
+#
+# Solution is recursive and runs in O(n!)
+
 # function determines if a string is different by one character
 def isDiffByOne(s1, s2):
     # if the strings are equal, false
