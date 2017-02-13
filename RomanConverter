@@ -1,0 +1,187 @@
+# my attempt at a converter for roman numeral expressions, as introduced by the following CodeFights challenge:
+# Convert any string expression consisting of roman numerals, using the operators +,-,*,/ and output the result
+# in roman numeral format, or N/A if the result is invalid (ie: iiii is an invalid roman numeral)
+# My solution did not pass all the hidden tests for the challenge, but it works for basic input.
+
+import re
+
+values = {'M': 1000, 'D': 500, 'C': 100, 'L': 50, 'X': 10, 'V': 5, 'I': 1}
+
+
+def convertFrom(string):
+    if type(string) is int:
+        return string
+
+    value = 0
+    i = 0
+    string = string.upper()
+    while i < len(string):
+        if i < len(string) - 1:
+            if (string[i] == 'C' and (string[i + 1] == 'D' or string[i + 1] == 'M')) or (
+                    string[i] == 'X' and (string[i + 1] == 'C' or string[i + 1] == 'L')) or (
+                    string[i] == 'I' and (string[i + 1] == 'X' or string[i + 1] == 'V')):
+                value += values[string[i + 1]] - values[string[i]]  # this combination is string[i+1] - string[i]
+                i += 2  # skip over that and the next character
+            else:
+                value += values[string[i]]
+                i += 1
+        else:
+            value += values[string[i]]
+            i += 1
+    return value
+
+
+def convertTo(number):
+    string = ""
+    # 1000's
+    numM = number // 1000
+    number = number % 1000
+    string += numM * 'M'
+    # 100's
+    # CM
+    if number >= 900:
+        string += 'CM'
+        number -= 900
+    # D
+    elif number >= 500:
+        string += 'D'
+        number -= 500
+        numC = number // 100
+        string += numC * 'C'
+        number = number % 100
+    # CD
+    elif number >= 400:
+        string += 'CD'
+        number -= 400
+    # C
+    elif number >= 100:
+        numC = number // 100
+        string += numC * 'C'
+        number = number % 100
+    # 10's
+    if number >= 90:
+        string += 'XC'
+        number -= 90
+    elif number >= 50:
+        string += 'L'
+        number -= 50
+        numX = number // 10
+        string += numX * 'X'
+        number = number % 10
+    elif number >= 40:
+        string += 'XL'
+        number -= 40
+    elif number >= 10:
+        numX = number // 10
+        string += numX * 'X'
+        number = number % 10
+
+    # 1's
+    if number == 9:
+        string += 'IX'
+    elif number >= 5:
+        string += 'V'
+        number -= 5
+        string += (number // 1) * 'I'
+    elif number == 4:
+        string += 'IV'
+    elif number < 4:
+        string += (number // 1) * 'I'
+
+    return string
+
+
+def calculate(operand1, operand2, operator):
+    op1 = convertFrom(operand1)
+    op2 = convertFrom(operand2)
+    if operator == '+':
+        return op1 + op2
+    if operator == '-':
+        return op1 - op2
+    if operator == '*':
+        return op1 * op2
+    if operator == '/':
+        return op1 // op2 if op1 % op2 == 0 else None
+    return None
+
+
+def evaluate(parts):
+    if len(parts) == 3:
+        return calculate(parts[0], parts[2], parts[1])
+
+    ops = list()
+    i = 0
+    while i < len(parts):
+        p = parts[i]
+        if p == '(':
+            value = evaluate(parts[i + 1:parts[i:].index(')') + i])
+            if value == None:
+                return None
+            ops.append(value)
+            i += parts[i:].index(')') + i + 1
+        elif p == '*':
+            if parts[i + 1] != '(':
+                op1 = ops.pop()
+                ops.append(calculate(op1, parts[i + 1], p))
+                i += 2
+            else:
+                op1 = ops.pop()
+                # evaluate the expression up to the )
+                op2 = evaluate(parts[i + 2:parts[i:].index(')') + i])
+                if op2 == None:
+                    return None
+                ops.append(calculate(op1, op2, p))
+                i += parts[i:].index(')') + i + 1
+        elif p == '/':
+            if parts[i + 1] != '(':
+                op1 = ops.pop()
+                value = calculate(op1, parts[i + 1], p)
+                if value == None:
+                    return None
+                ops.append(value)
+                i += 2
+            else:
+                op1 = ops.pop()
+                # evaluate the expression up to the )
+                op2 = evaluate(parts[i + 2:parts[i:].index(')') + i])
+                if op2 == None:
+                    return None
+                value = calculate(op1, op2, p)
+                if value == None:
+                    return None
+                ops.append(value)
+                i += parts[i:].index(')') + i + 1
+        elif p != ')':
+            ops.append(p)
+            i += 1
+        else:
+            i += 2
+
+    while len(ops) > 1:
+        op2 = ops.pop()
+        operator = ops.pop()
+        op1 = ops.pop()
+        value = calculate(op1, op2, operator)
+        if value == None:
+            return None
+        ops.append(value)
+
+    return ops.pop()
+
+
+def romanCalculator(expression):
+    expression = expression.replace("(", "( ")
+    expression = expression.replace(")", " )")
+    # detect invalid strings
+    if re.search(r'(i{4,}|v{2,}|l{2,}|c{4,}|d{2,}|m{4,}|(cm){2,}|(iv){2,}|(cd){2,}|(xl){2,}|(xc){2,}|(ix){2,})',
+                 expression, re.I):
+        return "N/A"
+    if re.search(r'(i{2,}[vx]|i{1,}[lcdm]|c{2,}[dm])', expression, re.I):
+        return "N/A"
+    # only one input in the expression
+    if not re.search(r'[\*/\+\-\(\)]+', expression):
+        return expression.upper()
+
+    parts = expression.split(" ")
+    val = evaluate(parts)
+    return "N/A" if val == None or val <= 0 or val >= 4000 else convertTo(val)
